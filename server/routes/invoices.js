@@ -10,7 +10,14 @@ function formatInvoiceNumber(n) {
 
 router.get('/', (req, res) => {
   const rows = db.prepare('SELECT * FROM invoices ORDER BY invoice_number_raw ASC').all();
-  res.json(rowsToArray(rows));
+  const invoices = rowsToArray(rows);
+
+  for (const invoice of invoices) {
+    const lineItems = db.prepare('SELECT * FROM invoice_line_items WHERE invoice_id = ? ORDER BY sort_order ASC').all(invoice.id);
+    invoice.lineItems = rowsToArray(lineItems);
+  }
+
+  res.json(invoices);
 });
 
 router.post('/', (req, res) => {
@@ -52,10 +59,32 @@ router.post('/', (req, res) => {
     db.prepare('UPDATE settings SET next_invoice_number = next_invoice_number + 1, updated_at = ? WHERE id = 1')
       .run(now);
 
+    const { lineItems } = req.body;
+    if (Array.isArray(lineItems) && lineItems.length > 0) {
+      const insertLine = db.prepare(`
+        INSERT INTO invoice_line_items (id, invoice_id, description, hours, rate, amount, sort_order)
+        VALUES (@id, @invoiceId, @description, @hours, @rate, @amount, @sortOrder)
+      `);
+      lineItems.forEach((item, index) => {
+        insertLine.run({
+          id: crypto.randomUUID(),
+          invoiceId: id,
+          description: item.description,
+          hours: item.hours,
+          rate: item.rate,
+          amount: item.amount,
+          sortOrder: index,
+        });
+      });
+    }
+
     return db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
   })();
 
-  res.status(201).json(rowToObject(created));
+  const invoice = rowToObject(created);
+  const createdLineItems = db.prepare('SELECT * FROM invoice_line_items WHERE invoice_id = ? ORDER BY sort_order ASC').all(id);
+  invoice.lineItems = rowsToArray(createdLineItems);
+  res.status(201).json(invoice);
 });
 
 router.patch('/:id', (req, res) => {

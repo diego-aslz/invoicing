@@ -11,8 +11,10 @@ export function InvoicePreview({ invoice }) {
     clientName, clientAddress,
     issuedAt, dueAt,
     serviceDescription, hoursWorked, hourlyRate, subtotal, total, currency,
-    notes,
+    notes, lineItems,
   } = invoice;
+
+  const hasLineItems = lineItems && lineItems.length > 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow p-10 max-w-2xl mx-auto font-sans text-sm text-gray-800">
@@ -74,12 +76,23 @@ export function InvoicePreview({ invoice }) {
           </tr>
         </thead>
         <tbody>
-          <tr className="border-b border-gray-100">
-            <td className="py-3 text-gray-800">{serviceDescription}</td>
-            <td className="py-3 text-right text-gray-700">{hoursWorked}</td>
-            <td className="py-3 text-right text-gray-700">{fmt(hourlyRate, currency)}</td>
-            <td className="py-3 text-right font-medium text-gray-900">{fmt(subtotal, currency)}</td>
-          </tr>
+          {hasLineItems ? (
+            lineItems.map((item, i) => (
+              <tr key={i} className="border-b border-gray-100">
+                <td className="py-3 text-gray-800">{item.description}</td>
+                <td className="py-3 text-right text-gray-700">{item.hours}</td>
+                <td className="py-3 text-right text-gray-700">{fmt(item.rate, currency)}</td>
+                <td className="py-3 text-right font-medium text-gray-900">{fmt(item.amount, currency)}</td>
+              </tr>
+            ))
+          ) : (
+            <tr className="border-b border-gray-100">
+              <td className="py-3 text-gray-800">{serviceDescription}</td>
+              <td className="py-3 text-right text-gray-700">{hoursWorked}</td>
+              <td className="py-3 text-right text-gray-700">{fmt(hourlyRate, currency)}</td>
+              <td className="py-3 text-right font-medium text-gray-900">{fmt(subtotal, currency)}</td>
+            </tr>
+          )}
         </tbody>
       </table>
 

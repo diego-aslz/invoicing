@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { addDays } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -26,7 +26,7 @@ function getMonthOptions() {
 
 export function InvoiceCreate() {
   const navigate = useNavigate();
-  const { projects, addInvoice, settings } = useOutletContext();
+  const { projects, addInvoice, settings, timeEntries } = useOutletContext();
 
   const activeProjects = projects.filter(p => p.isActive);
   const monthOptions = getMonthOptions();
@@ -40,11 +40,22 @@ export function InvoiceCreate() {
 
   const project = projects.find(p => p.id === projectId);
   const { businessDays, hours: calcHours } = calculateBillableHours(billingYear, billingMonth);
-  const hoursWorked = hoursOverride !== '' ? Number(hoursOverride) : calcHours;
+  const billingMonthStr = `${billingYear}-${String(billingMonth + 1).padStart(2, '0')}`;
+
+  // Check for time entries for selected project + month
+  const monthEntries = timeEntries.filter(
+    e => e.projectId === projectId && e.date.startsWith(billingMonthStr)
+  );
+  const hasTimeEntries = monthEntries.length > 0;
+  const sortedEntries = [...monthEntries].sort((a, b) => a.date.localeCompare(b.date));
+
+  const hoursWorked = hasTimeEntries
+    ? monthEntries.reduce((sum, e) => sum + e.hours, 0)
+    : (hoursOverride !== '' ? Number(hoursOverride) : calcHours);
+
   const hourlyRate = project ? project.hourlyRate : 0;
   const subtotal = hoursWorked * hourlyRate;
   const total = subtotal;
-  const billingMonthStr = `${billingYear}-${String(billingMonth + 1).padStart(2, '0')}`;
 
   function handleMonthChange(e) {
     const [y, m] = e.target.value.split('-').map(Number);
@@ -81,6 +92,15 @@ export function InvoiceCreate() {
       paidAt: null,
     };
 
+    if (hasTimeEntries) {
+      invoice.lineItems = sortedEntries.map(entry => ({
+        description: `${format(new Date(entry.date + 'T00:00:00'), 'MMM d, yyyy')}${entry.comment ? ' — ' + entry.comment : ''}`,
+        hours: entry.hours,
+        rate: hourlyRate,
+        amount: entry.hours * hourlyRate,
+      }));
+    }
+
     await addInvoice(invoice);
     navigate('/invoices');
   }
@@ -95,6 +115,11 @@ export function InvoiceCreate() {
         </Card>
       </div>
     );
+  }
+
+  function fmtCurrency(amount) {
+    if (!project) return '—';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: project.currency }).format(amount);
   }
 
   return (
@@ -130,28 +155,59 @@ export function InvoiceCreate() {
           />
         </Card>
 
-        <Card className="p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Hours Calculation</h2>
-          <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Business days in {MONTHS[billingMonth]} {billingYear}</span>
-              <span className="font-medium">{businessDays} days</span>
+        {hasTimeEntries ? (
+          <Card className="p-6 space-y-4">
+            <h2 className="font-semibold text-gray-900">Time Entries ({sortedEntries.length})</h2>
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-sm text-teal-800">
+              Using <span className="font-semibold">{sortedEntries.length}</span> time {sortedEntries.length === 1 ? 'entry' : 'entries'} for this month. Each will appear as a line item on the invoice.
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Calculated hours (× 8)</span>
-              <span className="font-medium">{calcHours} hrs</span>
+            <div className="overflow-hidden rounded-lg border border-gray-200">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left px-3 py-2 font-medium text-gray-500 text-xs uppercase">Date</th>
+                    <th className="text-left px-3 py-2 font-medium text-gray-500 text-xs uppercase">Comment</th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-500 text-xs uppercase">Hours</th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-500 text-xs uppercase">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedEntries.map(entry => (
+                    <tr key={entry.id} className="border-b border-gray-100">
+                      <td className="px-3 py-2 text-gray-800">{format(new Date(entry.date + 'T00:00:00'), 'MMM d, yyyy')}</td>
+                      <td className="px-3 py-2 text-gray-600">{entry.comment || <span className="text-gray-300 italic">—</span>}</td>
+                      <td className="px-3 py-2 text-right text-gray-800">{entry.hours}</td>
+                      <td className="px-3 py-2 text-right font-medium text-gray-800">{fmtCurrency(entry.hours * hourlyRate)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-          <Input
-            label="Hours Worked (leave blank to use calculated)"
-            type="number"
-            min="0"
-            step="0.5"
-            value={hoursOverride}
-            onChange={e => setHoursOverride(e.target.value)}
-            placeholder={String(calcHours)}
-          />
-        </Card>
+          </Card>
+        ) : (
+          <Card className="p-6 space-y-4">
+            <h2 className="font-semibold text-gray-900">Hours Calculation</h2>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Business days in {MONTHS[billingMonth]} {billingYear}</span>
+                <span className="font-medium">{businessDays} days</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Calculated hours (× 8)</span>
+                <span className="font-medium">{calcHours} hrs</span>
+              </div>
+            </div>
+            <Input
+              label="Hours Worked (leave blank to use calculated)"
+              type="number"
+              min="0"
+              step="0.5"
+              value={hoursOverride}
+              onChange={e => setHoursOverride(e.target.value)}
+              placeholder={String(calcHours)}
+            />
+          </Card>
+        )}
 
         <Card className="p-6 space-y-4">
           <h2 className="font-semibold text-gray-900">Summary</h2>
@@ -166,9 +222,7 @@ export function InvoiceCreate() {
             </div>
             <div className="flex justify-between border-t border-gray-200 pt-2 font-semibold text-base">
               <span>Total</span>
-              <span className="text-orange-600">
-                {project ? new Intl.NumberFormat('en-US', { style: 'currency', currency: project.currency }).format(total) : '—'}
-              </span>
+              <span className="text-orange-600">{fmtCurrency(total)}</span>
             </div>
           </div>
           <div className="flex flex-col gap-1">

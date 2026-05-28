@@ -12,11 +12,12 @@
 
 State is persisted in SQLite (`data/invoicing.db`) via an Express API on port 3001. Three custom hooks manage state; each fetches from `/api/*` on mount and exposes `{ loading, error }` alongside their data:
 
-| Hook          | API endpoint    | Purpose                                                             |
-| ------------- | --------------- | ------------------------------------------------------------------- |
-| `useSettings` | `/api/settings` | Business/client info, nextInvoiceNumber, currency, paymentTermsDays |
-| `useProjects` | `/api/projects` | Array of project objects                                            |
-| `useInvoices` | `/api/invoices` | Array of invoice snapshots                                          |
+| Hook             | API endpoint        | Purpose                                                             |
+| ---------------- | ------------------- | ------------------------------------------------------------------- |
+| `useSettings`    | `/api/settings`     | Business/client info, nextInvoiceNumber, currency, paymentTermsDays |
+| `useProjects`    | `/api/projects`     | Array of project objects                                            |
+| `useInvoices`    | `/api/invoices`     | Array of invoice snapshots (with lineItems)                         |
+| `useTimeEntries` | `/api/time-entries` | Array of time entry objects                                         |
 
 `App.jsx` initialises all three hooks and passes everything down via React Router's `useOutletContext`. Every page reads context with `const { ... } = useOutletContext()`. While any hook is loading, App shows a spinner; on error it shows a banner.
 
@@ -29,11 +30,12 @@ server/
   index.js              — Express entry, listens on port 3001
   db/
     connection.js       — opens data/invoicing.db, enables WAL, runs schema.sql
-    schema.sql          — DDL: settings (singleton row), projects, invoices
+    schema.sql          — DDL: settings (singleton row), projects, invoices, time_entries, invoice_line_items
     serialise.js        — snake_case DB rows → camelCase JS objects
   routes/
     settings.js         — GET + PATCH /api/settings
     projects.js         — GET, POST, PATCH /:id, DELETE /:id
+    time-entries.js     — GET (filter by projectId/month), POST, PATCH /:id, DELETE /:id
     invoices.js         — GET, POST, PATCH /:id, DELETE /:id
   middleware/
     errorHandler.js     — global 4-arg Express error handler, returns JSON
@@ -48,6 +50,14 @@ server/
 ## Invoice data model — immutable snapshot
 
 When an invoice is created, all sender/receiver fields (`businessName`, `businessAddress`, `clientName`, `clientAddress`) are copied from settings at that moment. This ensures PDFs remain correct even if settings are later changed.
+
+## Invoice line items
+
+When creating an invoice for a month that has time entries, each entry becomes a separate line item stored in `invoice_line_items`. The entries are snapshotted (description, hours, rate, amount) so the invoice remains immutable. If no time entries exist, the invoice uses the traditional single-line business-day calculation.
+
+## Time entries
+
+`time_entries` stores individual work-hour records linked to a project via `project_id`. Each entry has a `date` (YYYY-MM-DD), `hours`, and optional `comment`. The Time Entries page (`/time-entries`) provides full CRUD with project and month filtering.
 
 ## Hook patterns
 

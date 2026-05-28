@@ -55,8 +55,10 @@ export function InvoicePDF({ invoice }) {
     clientName, clientAddress,
     issuedAt, dueAt,
     serviceDescription, hoursWorked, hourlyRate, subtotal, total, currency,
-    notes,
+    notes, lineItems,
   } = invoice;
+
+  const hasLineItems = lineItems && lineItems.length > 0;
 
   return (
     <Document>
@@ -106,12 +108,23 @@ export function InvoicePDF({ invoice }) {
           <Text style={[S.col_rate, S.colHead]}>Rate</Text>
           <Text style={[S.col_amount, S.colHead]}>Amount</Text>
         </View>
-        <View style={S.tableRow}>
-          <Text style={S.col_desc}>{serviceDescription}</Text>
-          <Text style={[S.col_hours, { textAlign: 'right' }]}>{hoursWorked}</Text>
-          <Text style={[S.col_rate, { textAlign: 'right' }]}>{fmt(hourlyRate, currency)}</Text>
-          <Text style={[S.col_amount, S.bold, { textAlign: 'right' }]}>{fmt(subtotal, currency)}</Text>
-        </View>
+        {hasLineItems ? (
+          lineItems.map((item, i) => (
+            <View key={i} style={S.tableRow}>
+              <Text style={S.col_desc}>{item.description}</Text>
+              <Text style={[S.col_hours, { textAlign: 'right' }]}>{item.hours}</Text>
+              <Text style={[S.col_rate, { textAlign: 'right' }]}>{fmt(item.rate, currency)}</Text>
+              <Text style={[S.col_amount, S.bold, { textAlign: 'right' }]}>{fmt(item.amount, currency)}</Text>
+            </View>
+          ))
+        ) : (
+          <View style={S.tableRow}>
+            <Text style={S.col_desc}>{serviceDescription}</Text>
+            <Text style={[S.col_hours, { textAlign: 'right' }]}>{hoursWorked}</Text>
+            <Text style={[S.col_rate, { textAlign: 'right' }]}>{fmt(hourlyRate, currency)}</Text>
+            <Text style={[S.col_amount, S.bold, { textAlign: 'right' }]}>{fmt(subtotal, currency)}</Text>
+          </View>
+        )}
 
         {/* Totals */}
         <View style={S.totalsRow}>

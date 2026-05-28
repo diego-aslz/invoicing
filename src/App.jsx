@@ -3,19 +3,22 @@ import { Sidebar } from './components/layout/Sidebar';
 import { useSettings } from './hooks/useSettings';
 import { useProjects } from './hooks/useProjects';
 import { useInvoices } from './hooks/useInvoices';
+import { useTimeEntries } from './hooks/useTimeEntries';
 
 export function App() {
   const { settings, saveSettings, loading: lS, error: eS } = useSettings();
   const { projects, addProject, updateProject, deleteProject, loading: lP, error: eP } = useProjects();
   const { invoices, addInvoice, updateInvoice, deleteInvoice, loading: lI, error: eI } = useInvoices();
+  const { timeEntries, addTimeEntry, updateTimeEntry, deleteTimeEntry, loading: lT, error: eT } = useTimeEntries();
 
-  const loading = lS || lP || lI;
-  const error = eS || eP || eI;
+  const loading = lS || lP || lI || lT;
+  const error = eS || eP || eI || eT;
 
   const context = {
     settings, saveSettings,
     projects, addProject, updateProject, deleteProject,
     invoices, addInvoice, updateInvoice, deleteInvoice,
+    timeEntries, addTimeEntry, updateTimeEntry, deleteTimeEntry,
   };
 
   return (
