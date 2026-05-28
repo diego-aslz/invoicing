@@ -112,7 +112,7 @@ export function InvoicePDF({ invoice }) {
           lineItems.map((item, i) => (
             <View key={i} style={S.tableRow}>
               <Text style={S.col_desc}>{item.description}</Text>
-              <Text style={[S.col_hours, { textAlign: 'right' }]}>{item.hours}</Text>
+              <Text style={[S.col_hours, { textAlign: 'right' }]}>{parseFloat(item.hours.toFixed(2))}</Text>
               <Text style={[S.col_rate, { textAlign: 'right' }]}>{fmt(item.rate, currency)}</Text>
               <Text style={[S.col_amount, S.bold, { textAlign: 'right' }]}>{fmt(item.amount, currency)}</Text>
             </View>
@@ -120,7 +120,7 @@ export function InvoicePDF({ invoice }) {
         ) : (
           <View style={S.tableRow}>
             <Text style={S.col_desc}>{serviceDescription}</Text>
-            <Text style={[S.col_hours, { textAlign: 'right' }]}>{hoursWorked}</Text>
+            <Text style={[S.col_hours, { textAlign: 'right' }]}>{parseFloat(hoursWorked.toFixed(2))}</Text>
             <Text style={[S.col_rate, { textAlign: 'right' }]}>{fmt(hourlyRate, currency)}</Text>
             <Text style={[S.col_amount, S.bold, { textAlign: 'right' }]}>{fmt(subtotal, currency)}</Text>
           </View>

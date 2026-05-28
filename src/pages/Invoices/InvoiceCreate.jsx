@@ -176,7 +176,7 @@ export function InvoiceCreate() {
                     <tr key={entry.id} className="border-b border-gray-100">
                       <td className="px-3 py-2 text-gray-800">{format(new Date(entry.date + 'T00:00:00'), 'MMM d, yyyy')}</td>
                       <td className="px-3 py-2 text-gray-600">{entry.comment || <span className="text-gray-300 italic">—</span>}</td>
-                      <td className="px-3 py-2 text-right text-gray-800">{entry.hours}</td>
+                      <td className="px-3 py-2 text-right text-gray-800">{parseFloat(entry.hours.toFixed(2))}</td>
                       <td className="px-3 py-2 text-right font-medium text-gray-800">{fmtCurrency(entry.hours * hourlyRate)}</td>
                     </tr>
                   ))}
@@ -214,7 +214,7 @@ export function InvoiceCreate() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Hours</span>
-              <span>{hoursWorked} hrs</span>
+              <span>{parseFloat(hoursWorked.toFixed(2))} hrs</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Rate</span>

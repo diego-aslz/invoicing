@@ -80,7 +80,7 @@ export function InvoicePreview({ invoice }) {
             lineItems.map((item, i) => (
               <tr key={i} className="border-b border-gray-100">
                 <td className="py-3 text-gray-800">{item.description}</td>
-                <td className="py-3 text-right text-gray-700">{item.hours}</td>
+                <td className="py-3 text-right text-gray-700">{parseFloat(item.hours.toFixed(2))}</td>
                 <td className="py-3 text-right text-gray-700">{fmt(item.rate, currency)}</td>
                 <td className="py-3 text-right font-medium text-gray-900">{fmt(item.amount, currency)}</td>
               </tr>
@@ -88,7 +88,7 @@ export function InvoicePreview({ invoice }) {
           ) : (
             <tr className="border-b border-gray-100">
               <td className="py-3 text-gray-800">{serviceDescription}</td>
-              <td className="py-3 text-right text-gray-700">{hoursWorked}</td>
+              <td className="py-3 text-right text-gray-700">{parseFloat(hoursWorked.toFixed(2))}</td>
               <td className="py-3 text-right text-gray-700">{fmt(hourlyRate, currency)}</td>
               <td className="py-3 text-right font-medium text-gray-900">{fmt(subtotal, currency)}</td>
             </tr>

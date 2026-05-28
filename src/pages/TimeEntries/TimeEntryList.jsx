@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { format } from 'date-fns';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { TimeInput } from '../../components/ui/TimeInput';
 import { Select } from '../../components/ui/Select';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { hoursToHHMM, hhmmToHours } from '../../utils/timeFormat';
+import { useTimer } from '../../hooks/useTimer';
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -39,12 +42,31 @@ export function TimeEntryList() {
   const [filterYear, setFilterYear] = useState(monthOptions[0]?.year ?? new Date().getFullYear());
   const [filterMonth, setFilterMonth] = useState(monthOptions[0]?.month ?? new Date().getMonth());
 
+  // Timer state
+  const { isRunning, currentSeconds, decimalHours, startTimer, pauseTimer, resetTimer } = useTimer();
+
   // Add form
-  const [formProject, setFormProject] = useState(activeProjects[0]?.id || '');
+  const lastUsedProject = timeEntries.length > 0
+    ? [...timeEntries].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))[0].projectId
+    : null;
+  const [formProject, setFormProject] = useState(lastUsedProject || activeProjects[0]?.id || '');
   const [formDate, setFormDate] = useState(todayStr());
-  const [formHours, setFormHours] = useState('');
+  
+  // Initialize formHours with the timer's current time if it's > 0, else empty.
+  // We'll also use an effect to sync it.
+  const [formHours, setFormHours] = useState(decimalHours > 0 ? hoursToHHMM(decimalHours) : '');
   const [formComment, setFormComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Sync timer to formHours whenever it's running
+  // We round it slightly so it doesn't flicker empty when small.
+  // Actually, hoursToHHMM handles small decimals by showing 00:MM.
+  // We only want to sync it if the timer is actually active (has seconds).
+  useEffect(() => {
+    if (currentSeconds > 0) {
+      setFormHours(hoursToHHMM(decimalHours));
+    }
+  }, [currentSeconds, decimalHours]);
 
   // Edit state
   const [editId, setEditId] = useState(null);
@@ -73,17 +95,19 @@ export function TimeEntryList() {
 
   async function handleAdd(e) {
     e.preventDefault();
-    if (!formProject || !formDate || !formHours) return;
+    const decimalHours = hhmmToHours(formHours);
+    if (!formProject || !formDate || !decimalHours) return;
     setSubmitting(true);
     try {
       await addTimeEntry({
         projectId: formProject,
         date: formDate,
-        hours: Number(formHours),
+        hours: decimalHours,
         comment: formComment,
       });
       setFormHours('');
       setFormComment('');
+      resetTimer();
     } finally {
       setSubmitting(false);
     }
@@ -93,7 +117,7 @@ export function TimeEntryList() {
     setEditId(entry.id);
     setEditForm({
       date: entry.date,
-      hours: String(entry.hours),
+      hours: hoursToHHMM(entry.hours),
       comment: entry.comment,
     });
   }
@@ -104,9 +128,11 @@ export function TimeEntryList() {
   }
 
   async function saveEdit(id) {
+    const decimalHours = hhmmToHours(editForm.hours);
+    if (!decimalHours) return;
     await updateTimeEntry(id, {
       date: editForm.date,
-      hours: Number(editForm.hours),
+      hours: decimalHours,
       comment: editForm.comment,
     });
     setEditId(null);
@@ -134,16 +160,23 @@ export function TimeEntryList() {
           <div className="w-40">
             <Input label="Date" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
           </div>
-          <div className="w-28">
-            <Input
-              label="Hours"
-              type="number"
-              min="0.5"
-              step="0.5"
-              value={formHours}
-              onChange={e => setFormHours(e.target.value)}
-              placeholder="8"
-            />
+          <div className="w-44 flex flex-nowrap items-end gap-2 flex-shrink-0">
+            <div className="flex-1 min-w-0">
+              <TimeInput
+                label="Hours"
+                value={formHours}
+                onChange={setFormHours}
+              />
+            </div>
+            <Button 
+              type="button" 
+              variant={isRunning ? 'secondary' : 'outline'} 
+              className={`flex-shrink-0 px-3 py-2 text-lg h-[38px] ${isRunning ? 'text-orange-600 bg-orange-100 border-orange-200 hover:bg-orange-200' : 'text-gray-500'}`}
+              onClick={isRunning ? pauseTimer : startTimer}
+              title={isRunning ? "Pause Timer" : "Start Timer"}
+            >
+              {isRunning ? '⏸' : '▶'}
+            </Button>
           </div>
           <div className="flex-1 min-w-[200px]">
             <Input
@@ -153,7 +186,7 @@ export function TimeEntryList() {
               placeholder="What did you work on?"
             />
           </div>
-          <Button type="submit" disabled={submitting || !formProject || !formDate || !formHours}>
+          <Button type="submit" disabled={submitting || !formProject || !formDate || !hhmmToHours(formHours)}>
             {submitting ? 'Adding…' : '+ Add Entry'}
           </Button>
         </form>
@@ -187,7 +220,7 @@ export function TimeEntryList() {
         </div>
         {filtered.length > 0 && (
           <div className="ml-auto text-sm text-gray-500">
-            <span className="font-medium text-gray-700">{filtered.length}</span> {filtered.length === 1 ? 'entry' : 'entries'} · <span className="font-medium text-orange-600">{totalHours}</span> hours total
+            <span className="font-medium text-gray-700">{filtered.length}</span> {filtered.length === 1 ? 'entry' : 'entries'} · <span className="font-medium text-orange-600">{hoursToHHMM(totalHours)}</span> hours total
           </div>
         )}
       </div>
@@ -235,13 +268,10 @@ export function TimeEntryList() {
                           </div>
                         </td>
                         <td className="px-4 py-2 text-right">
-                          <input
-                            type="number"
-                            min="0.5"
-                            step="0.5"
+                          <TimeInput
                             value={editForm.hours}
-                            onChange={e => setEditForm(f => ({ ...f, hours: e.target.value }))}
-                            className="px-2 py-1 border border-gray-300 rounded text-sm w-20 text-right focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            onChange={v => setEditForm(f => ({ ...f, hours: v }))}
+                            className="w-20 text-right"
                           />
                         </td>
                         <td className="px-4 py-2">
@@ -270,7 +300,7 @@ export function TimeEntryList() {
                             <span className="text-gray-700">{proj?.name || 'Unknown'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right font-medium text-gray-800">{entry.hours}</td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-800">{hoursToHHMM(entry.hours)}</td>
                         <td className="px-4 py-3 text-gray-600">{entry.comment || <span className="text-gray-300 italic">—</span>}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-1">
@@ -293,7 +323,7 @@ export function TimeEntryList() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => deleteTimeEntry(deleteTarget.id)}
         title="Delete Time Entry"
-        message={`Delete the ${deleteTarget ? format(new Date(deleteTarget.date + 'T00:00:00'), 'MMM d, yyyy') : ''} entry (${deleteTarget?.hours}h)? This cannot be undone.`}
+        message={`Delete the ${deleteTarget ? format(new Date(deleteTarget.date + 'T00:00:00'), 'MMM d, yyyy') : ''} entry (${deleteTarget ? hoursToHHMM(deleteTarget.hours) : ''})? This cannot be undone.`}
       />
     </div>
   );
