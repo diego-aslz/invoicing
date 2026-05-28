@@ -1,12 +1,21 @@
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
+import { 
+  LayoutDashboard, 
+  FolderKanban, 
+  Clock, 
+  Receipt, 
+  Settings,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
 
 const NAV = [
-  { to: '/', label: 'Dashboard', icon: '⊞', end: true },
-  { to: '/projects', label: 'Projects', icon: '◈' },
-  { to: '/time-entries', label: 'Time Entries', icon: '◷' },
-  { to: '/invoices', label: 'Invoices', icon: '◻' },
-  { to: '/settings', label: 'Settings', icon: '⚙' },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/projects', label: 'Projects', icon: FolderKanban },
+  { to: '/time-entries', label: 'Time Entries', icon: Clock },
+  { to: '/invoices', label: 'Invoices', icon: Receipt },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function Sidebar() {
@@ -20,20 +29,20 @@ export function Sidebar() {
         )}
         <button
           onClick={() => setCollapsed(c => !c)}
-          className="text-gray-400 hover:text-white transition-colors ml-auto"
+          className="text-gray-400 hover:text-white transition-colors ml-auto flex-shrink-0"
           title={collapsed ? 'Expand' : 'Collapse'}
         >
-          {collapsed ? '›' : '‹'}
+          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
       </div>
       <nav className="flex-1 py-4 flex flex-col gap-1 px-2">
-        {NAV.map(({ to, label, icon, end }) => (
+        {NAV.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors overflow-hidden ${
                 isActive
                   ? 'bg-orange-500 text-white'
                   : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -41,8 +50,8 @@ export function Sidebar() {
             }
             title={collapsed ? label : undefined}
           >
-            <span className="text-lg leading-none flex-shrink-0">{icon}</span>
-            {!collapsed && <span>{label}</span>}
+            <Icon size={20} className="flex-shrink-0" />
+            {!collapsed && <span className="whitespace-nowrap">{label}</span>}
           </NavLink>
         ))}
       </nav>
