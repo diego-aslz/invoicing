@@ -102,3 +102,8 @@ npm run dev:web  # Vite only
 npm run build    # production build → dist/
 npm run preview  # serve dist/ locally
 ```
+
+## Rules
+
+- NEVER delete the database, this project is run and used locally only
+
