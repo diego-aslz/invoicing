@@ -64,7 +64,8 @@ router.patch('/:id', (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Not found' });
 
   const camelToSnake = (s) => s.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`);
-  const allowed = ['status', 'notes', 'service_description', 'paid_at', 'issued_at', 'due_at'];
+  const allowed = ['status', 'notes', 'service_description', 'paid_at', 'issued_at', 'due_at',
+    'invoice_number', 'hours_worked', 'business_days', 'subtotal', 'total'];
 
   const updates = { updated_at: new Date().toISOString() };
   for (const [k, v] of Object.entries(req.body)) {
